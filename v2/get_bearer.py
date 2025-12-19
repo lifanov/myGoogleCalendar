@@ -96,9 +96,34 @@ def get_token():
     for entry in logs:
         if "Bearer " in str(entry["message"]):
             json_message_data = json.loads(str(entry["message"]))
-            authorization_json = json_message_data["message"]["params"]["request"][
-                "headers"
-            ]["Authorization"]
-            logger.success("Bearer obtained! Closing...")
-            browser.close()
-            return authorization_json
+
+            # Try to extract Bearer token from request headers
+            try:
+                if "request" in json_message_data["message"]["params"]:
+                    request_headers = json_message_data["message"]["params"]["request"].get("headers", {})
+                    if "Authorization" in request_headers:
+                        authorization_json = request_headers["Authorization"]
+                        if "Bearer " in authorization_json:
+                            logger.success("Bearer obtained from request headers! Closing...")
+                            browser.close()
+                            return authorization_json
+            except (KeyError, TypeError):
+                pass
+
+            # Try to extract Bearer token from response headers
+            try:
+                if "response" in json_message_data["message"]["params"]:
+                    response_headers = json_message_data["message"]["params"]["response"].get("headers", {})
+                    if "Authorization" in response_headers:
+                        authorization_json = response_headers["Authorization"]
+                        if "Bearer " in authorization_json:
+                            logger.success("Bearer obtained from response headers! Closing...")
+                            browser.close()
+                            return authorization_json
+            except (KeyError, TypeError):
+                pass
+
+    # If we get here, we didn't find the Bearer token
+    logger.error("Failed to extract Bearer token from logs")
+    browser.close()
+    raise Exception("Could not find Bearer token in browser logs")

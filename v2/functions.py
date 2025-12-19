@@ -139,7 +139,7 @@ def get_store_info(store_id):
         "https://redsky.target.com/redsky_aggregations/v1/web/store_location_v1"
         f"?store_id={store_id}"
         f"&key={config_file.API_KEY}",
-        headers=config_file.get_schedule_headers,
+        headers=config_file.get_schedule_headers(),
     )
     s = Store()
     # Initialize store object
@@ -162,15 +162,17 @@ def call_wfm(
 ):
     # Function to call and retrieve schedule.
     # Start Date and end date format should be YYYY-MM-DD
-    r = requests.get(
+    url = (
         f"https://api.target.com/wfm_schedules/v1/weekly_schedules?"
         f"team_member_number=00{config_file.EMPLOYEE_ID}"
         f"&start_date={start_date}"
         f"&end_date={end_date}"
         f"&location_id="  # Needs this flag for some reason.
-        f"&key={config_file.API_KEY}",
-        headers=hdr,
+        f"&key={config_file.API_KEY}"
     )
+    logger.info(f"Calling WFM API: {url}")
+    r = requests.get(url, headers=hdr)
+    logger.info(f"WFM API response status: {r.status_code}")
     return r
 
 
@@ -179,16 +181,17 @@ def call_available_shifts(
     start_date,
     end_date,
 ):
-    r = requests.get(
+    url = (
         f"https://api.target.com/wfm_available_shifts/v1/available_shifts?"
         f"worker_id={config_file.EMPLOYEE_ID}"
         f"&start_date={start_date}"
         f"&end_date={end_date}"
-        f"&location_ids={config_file.STORE_NUMBER}"  # Needs this flag for some reason.
-        f"&key={config_file.API_KEY}",
-        headers=hdr,
+        f"&location_ids=1375"  # Needs this flag for some reason.
+        f"&key={config_file.API_KEY}"
     )
-
+    logger.info(f"Calling Available Shifts API: {url}")
+    r = requests.get(url, headers=hdr)
+    logger.info(f"Available Shifts API response status: {r.status_code}")
     return r
 
 

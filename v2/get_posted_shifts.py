@@ -1,6 +1,7 @@
 import datetime
 import functions
 import get_bearer
+import config_file
 import configparser
 from loguru import logger
 
@@ -11,11 +12,9 @@ def get_posted_shifts():
     logger.info("Setting up store info object")
     store_info = functions.Store()
     config.read("config.cfg")
-    test_headers = {"Authorization": config["DEFAULT"]["Bearer"]}
-    posted_shift_headers = {
-        "Authorization": config["DEFAULT"]["Bearer"],
-        "Page-Origin": "AVAILABLE_SHIFTS",
-    }
+    bearer = config["DEFAULT"]["Bearer"]
+    test_headers = config_file.get_auth_headers(bearer)
+    posted_shift_headers = config_file.get_posted_shifts_headers(bearer)
     logger.info("Testing previously used token.")
     # test the token.
     if functions.test_token(test_headers).status_code == 401:
@@ -25,9 +24,8 @@ def get_posted_shifts():
         new_token = get_bearer.get_token()
         logger.success("New Token obtained. Testing new token...")
         # set new header and test new token
-        headers = {
-            "Authorization": new_token,
-        }
+        headers = config_file.get_auth_headers(new_token)
+        posted_shift_headers = config_file.get_posted_shifts_headers(new_token)
         if functions.test_token(headers).status_code == 400:
             # This may seem weird at first, but we're just checking if it authenticated properly, not the actual API
             logger.success("New Token valid! Updating configuration file...")
@@ -57,16 +55,21 @@ def get_posted_shifts():
         if i > 0:
             start_week_obj += datetime.timedelta(7)
             end_week_obj += datetime.timedelta(7)
-        logger.info("Calling available shifts API")
+        logger.info(f"Fetching available shifts for {start_week_obj.date()} to {end_week_obj.date()}")
         call = functions.call_available_shifts(
             posted_shift_headers, start_week_obj.date(), end_week_obj.date()
         )
-        call_json = call.json()
         # call and check the results
         if call.status_code != 200:
-            logger.error("Crap. API returned error exiting safely")
+            logger.error(f"Available Shifts API error for date range {start_week_obj.date()} to {end_week_obj.date()}")
+            logger.error(f"Status code: {call.status_code}")
+            logger.error(f"Response text: {call.text}")
+            try:
+                logger.error(f"Response JSON: {call.json()}")
+            except:
+                pass
             exit(-2)
-        logger.success("Call Returned 200!")
+        call_json = call.json()
 
         if not len(call_json["available_shifts"]):
             logger.info("No available shifts found.")
