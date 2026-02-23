@@ -1,46 +1,27 @@
 import datetime
 import functions
-import get_bearer
 import config_file
-import configparser
 from loguru import logger
+from token_manager import TokenManager
 
 def get_posted_shifts():
     logger.info("Starting get_posted_shifts function.")
-    logger.info("Reading Configuration file. ")
-    config = configparser.ConfigParser()
+    # logger.info("Reading Configuration file. ")
+    # config = configparser.ConfigParser()
     logger.info("Setting up store info object")
     store_info = functions.Store()
-    config.read("config.cfg")
-    bearer = config["DEFAULT"]["Bearer"]
-    test_headers = config_file.get_auth_headers(bearer)
-    posted_shift_headers = config_file.get_posted_shifts_headers(bearer)
-    logger.info("Testing previously used token.")
-    # test the token.
-    if functions.test_token(test_headers).status_code == 401:
-        # 401 means that response was invalid
-        logger.warning("Token invalid. Generating new token...")
-        # get new token
-        new_token = get_bearer.get_token()
-        logger.success("New Token obtained. Testing new token...")
-        # set new header and test new token
-        headers = config_file.get_auth_headers(new_token)
-        posted_shift_headers = config_file.get_posted_shifts_headers(new_token)
-        if functions.test_token(headers).status_code == 400:
-            # This may seem weird at first, but we're just checking if it authenticated properly, not the actual API
-            logger.success("New Token valid! Updating configuration file...")
-            config["DEFAULT"]["Bearer"] = new_token
-            # Update the new config file.
-            with open("config.cfg", "w") as configfile:
-                config.write(configfile)
-        else:
-            logger.error(
-                f"ERROR! New Token Invalid! error {functions.test_token(headers).status_code}"
-            )
-            logger.error("New Token invalid! Exiting...")
-            exit(-1)
 
-    logger.success("Existing Token valid!")
+    # Get Token
+    tm = TokenManager()
+    try:
+        bearer_token = tm.get_valid_token()
+    except Exception as e:
+        logger.error(f"Failed to obtain valid token: {e}")
+        exit(-1)
+
+    posted_shift_headers = config_file.get_posted_shifts_headers(bearer_token)
+    logger.success("Token valid!")
+
     # Now everything is verified and is working properly, we can start to work+
 
     logger.info("Starting API calls for available shifts.")
