@@ -186,7 +186,7 @@ def call_available_shifts(
         f"worker_id={config_file.EMPLOYEE_ID}"
         f"&start_date={start_date}"
         f"&end_date={end_date}"
-        f"&location_ids=1375"  # Needs this flag for some reason.
+        f"&location_ids={config_file.STORE_NUMBER}"  # Needs this flag for some reason.
         f"&key={config_file.API_KEY}"
     )
     logger.info(f"Calling Available Shifts API: {url}")
