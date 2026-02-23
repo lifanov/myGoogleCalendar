@@ -5,5 +5,6 @@
 /v2/script.log
 /v2/shift_database.sqlite3
 /v2/token.json
+/v2/bearer_token.json
 /v2/credentials.json
 __pycache__/

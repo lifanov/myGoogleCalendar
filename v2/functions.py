@@ -66,29 +66,6 @@ def notify_user(message):
         logger.error(f"Notifying FAILED {r.text}")
 
 
-def check_cfg_file():
-    # This function will ensure that there is a configuration file, and if there isn't then it will generate one.
-    # This file will only be used to hold the bearer token
-    logger.info("Checking configuration file...")
-    cwd = os.getcwd()
-    # Get Current working directory
-    config_path = os.path.join(cwd, "config.cfg")
-    # Create path
-    if not os.path.isfile(config_path):
-        # Poke file to see if it exists.
-        logger.warning("Config file does not exist! Generating new...")
-        f = open("config.cfg", "a")
-        f.write(
-            """[DEFAULT]
-    Bearer = """
-        )
-        f.close()
-        # generate config file
-        logger.success("Config File Generated")
-    else:
-        logger.info("Config File already exists")
-
-
 def create_event(location, job_title, s_time, e_time):
     # function to create events via Google Calendar
     event = {
@@ -115,22 +92,12 @@ def create_event(location, job_title, s_time, e_time):
 
 
 def get_current_timezone_offset():
-    # Get the host's timezone offset
-    current_time = datetime.datetime.now()
-    current_timezone = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
-    utc_offset = current_timezone.utcoffset(current_time).total_seconds() / 3600
-    offset = int(utc_offset)
-    # Simple logic to sort timezones to make google calendar happy.
-    if offset == 0:
-        offset = "-00:00"
-    elif offset <= -10:
-        offset = f"{offset}:00"
-    elif offset < 0:
-        offset = f"-0{offset * -1}:00"
-    else:
-        offset = f"-0{offset}:00"
-
-    return offset
+    """
+    Returns the current system timezone offset in ISO 8601 format (e.g., +05:30, -05:00).
+    """
+    local_now = datetime.datetime.now().astimezone()
+    offset = local_now.strftime("%z")  # Returns +HHMM or -HHMM
+    return f"{offset[:-2]}:{offset[-2:]}"
 
 
 def get_store_info(store_id):
@@ -193,20 +160,6 @@ def call_available_shifts(
     r = requests.get(url, headers=hdr)
     logger.info(f"Available Shifts API response status: {r.status_code}")
     return r
-
-
-def test_token(test_header):
-    # Function to test if Bearer token is valid
-    test_request = requests.get(
-        f"https://api.target.com/wfm_schedules/v1/weekly_schedules?"
-        f"team_member_number=00{config_file.EMPLOYEE_ID}"
-        "&start_date=2020-06-23"
-        "&end_date=2020-06-29"  # any date should work here, we're just making sure the key is valid
-        "&location_id="  # Needs this flag for some reason.
-        f"&key={config_file.API_KEY}",
-        headers=test_header,
-    )
-    return test_request
 
 
 def seen_or_record(shift):
