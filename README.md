@@ -1,122 +1,91 @@
-# myGoogleCalendar
+# myGoogleCalendar (v2)
 
-You can authenticate by using the 2FA authenticator code
+A Python program to automatically sync your Target myTime shifts to Google Calendar.
 
-A simple program to copy my shifts from Target myTime to Google Calendar. 
+This tool authenticates with Target's systems, retrieves your schedule, and adds or updates events in your Google Calendar. It supports Multi-Factor Authentication (MFA) and can verify previously added shifts to ensure accuracy.
 
-Hello all! I am using the Google Calendar API for this. If you would like to use this code. You MUST be a Google Cloud developer (its free) and get a Google Auth Key. 
+## Prerequisites
 
-# How does this work?
+*   **Google Cloud Developer Account**: Required to access the Google Calendar API.
+*   **Python 3.x**: Ensure you have Python installed.
+*   **Google Chrome**: Required for the automation script to log in.
 
-This code will authenticate you, save your token, and call the WFM API which allows this script to be ran multiple times whilst keeping the same token.
+## Setup Instructions
 
-To ensure your shifts are always the most recent onces, on every run it is going to verify any previous shifts added and change them if needed. This makes sure that if a time or a workcentre changes, You're still good to go. 
+### 1. Clone the Repository
 
+Clone this project to your local machine.
+All the working files for the latest version are in the `v2` folder.
 
-# **Lets Get Started!**. 
+### 2. Google Calendar API Setup
 
-First you need to clone this project. Do this however you'd like.
-Once you've done that, all the working file are going to be in the V2 folder. I wrote V1 when I was new to coding and it is written very very badly. 
-V2 is significantly more efficient . 
+1.  Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2.  Create a new project.
+3.  Enable the **Google Calendar API**.
+4.  Configure the **OAuth Consent Screen**:
+    *   Set usage to "External" (or "Internal" if you have a Google Workspace organization).
+    *   Fill in required details.
+    *   **Important**: Switch the publishing status from "Testing" to **"Production"** to prevent the token from expiring every 7 days.
+5.  Create **OAuth 2.0 Client IDs**:
+    *   Go to **Credentials** > **Create Credentials** > **OAuth client ID**.
+    *   Select "Desktop app".
+    *   Download the JSON file.
+6.  Rename the downloaded file to `credentials.json` and place it inside the `v2` folder.
 
-# **Google API Key**
-First you need a form of authenticating with Google Calendar
+### 3. Configuration
 
-Goto [console.cloud.google.com](https://console.cloud.google.com/)
+1.  Navigate to the `v2` folder.
+2.  Locate `config_template.py` and rename it to `config_file.py`.
+3.  Open `config_file.py` in a text editor and update the following variables:
 
-https://youtu.be/c2b2yUNWFzI?t=225 this is a great video explaining the setting up the OAuth for Google Calendar. Watch till 10:05 minutes and come back to this documnentation 
+    *   `EMPLOYEE_ID`: Your Target Team Member ID (e.g., `"12345678"`).
+    *   `PASSWORD`: Your password for Workday / Target Pay and Benefits.
+    *   `STORE_NUMBER`: Your 4-digit store number (e.g., `"1375"`).
+    *   `PUSHOVER_APP_API_KEY` & `PUSHOVER_USER_API_KEY`: (Optional) Fill these if you want push notifications via Pushover.
+    *   `run_posted_shifts`: Set to `True` to scan for available shifts.
+    *   `headless`: Set to `True` to run the browser in the background (hidden).
 
-Welcome back!
+#### Multi-Factor Authentication (MFA) Setup
 
-Quick Thing, While you're in the cloud console, Goto API & Services, OAuth Consent Screen, and switch your app from "Testing" to "Production"
-![image](https://github.com/user-attachments/assets/0d396f76-20e1-491e-8cab-8d58e555c8cb)
-Testing tokens last a week while Production Tokens last alot longer ( I think permenant? Hard to say, many conflicting answers online ) 
+**This is a critical step.** You need to extract the TOTP secret from your authenticator setup.
 
-Once you create your OAuth, click download JSON on the right side. 
-Drop it into the main directory of your working directory.
+1.  Log in to [mylogin.prod.target.com](https://mylogin.prod.target.com) (must be on Target Internal Network, e.g., at the store).
+2.  Go to the Authenticator App setup section.
+3.  **Before** scanning the QR code, capture the URL or secret key. It usually looks like `otpauth://totp/...?secret=REALLYLONGTOKEN...`.
+4.  Copy the `REALLYLONGTOKEN` part.
+5.  In `config_file.py`, paste it into the `totp` setup:
+    ```python
+    totp = pyotp.TOTP("REALLYLONGTOKEN")
+    ```
 
-Rename the file **"credentials.json"**
+### 4. Installation
 
-# **Setting up your config file** 
-Now, goto the **config_template.py** file in the main directory and change the info in there to match your information. Lets break down what all of these do. 
+Open a terminal or command prompt, navigate to the `v2` folder, and install the required dependencies:
 
-
-# Global Variables
-```EMPLOYEE_ID = 00000000```
-Replace these numbers with your TMID you use at the time clock
-
-```PASSWORD = "myPassword"``` 
-Replace password with your password when you sign into Workday or Target Pay and Benefits. 
-
-```STORE_NUMBER = 1375```
-Replace this with  your 4 digit store number is. 
-Note if your store number is less than 4 digits, like store number 192, make sure you have a leading 0, so in this case it would be 0192
-
-```API_KEY = "eb2551e4accc14f38cc42d32fbc2b2ea"```
-You can change this but the default one should work
-
+```bash
+cd v2
+pip install -r requirements.txt
 ```
-PUSHOVER_APP_API_KEY = ""
-PUSHOVER_USER_API_KEY = ""
+
+### 5. Running the Script
+
+Run the main script:
+
+```bash
+python top.py
 ```
-These two lines are if you want to get notifications on your phone about any posted shifts AND if you want to get notified that a shift was added to your Google calendar. 
-If you don't want to get these notifications, just leave these two strings empty
 
-If you don't want this script to scan for posted shifts
-```run_posted_shifts = True``` 
-If this is set to true, then it will read the available shifts in your store and notify you via Pushover. You need to setup the pushover APP and USER API key in the above block though. 
-```headless = True``` 
-Headless means that you wont see see Chrome open to obtain the Bearer.
-# The Hardest Part
+## First Run
 
-# ** READ ALL THE STEPS IN THIS SECTION! **
+*   **Google Authentication**: On the first run, a browser window will open asking you to log in to your Google account and allow access to your calendar. This will generate a `token.json` file for future runs.
+    *   If you see a "Google hasn't verified this app" warning, click "Advanced" and then "Go to [Project Name] (unsafe)". This is normal for personal projects.
+*   **Target Login**: The script will launch a browser (visible or headless depending on your config) to log in to myTime and retrieve your schedule.
 
-This is the hardest part about the entire setup process about this. As your form of multifactor authentication you need to obtain a One Time Password code. 
-***You need to be on the Target Internal Network for this part of the setup.***
-Once you're at work, log into **https://mylogin.prod.target.com** and there should be a section of setting up an Authenticator App.
-Note: I used a ChromeBox but you should be able to use a myDevice
+## Troubleshooting
 
-You can use any kind of regular authenticator app like Authy, 1Password, Okta Verify, Google Authenticator, Etc. 
-(Side note, Target SSO now has 1Password Passkey support so I personally reccomend using 1Password as your primary Password Manager if you haven't already)
-If you don't wanna pay for 1Password you can use anything else in that list. I personally reccomend Authy since it allows you to backup and encrypt your MFA codes. 
-***BEFORE YOU COMPLETE THE ENROLLMENT TAKE A PICTURE OF THE QR CODE!!!!***
-Now complete the enrollment.
+*   **SQLAlchemy Errors**: If you encounter issues related to SQLAlchemy, try reinstalling it: `pip install SQLAlchemy`.
+*   **ChromeDriver**: Ensure you have Google Chrome installed. The script uses `undetected-chromedriver` which handles driver installation.
 
-Now lets get back to the enrollment. If you convert the QR code to plaintext, it should look something like this ```otpauth://totp/?1234567secret=REALLYLONGTOKEN&issuer=Target%20SSO``` 
-Now we can put this token into our script. 
-```totp = pyotp.TOTP("")```
-In the example, we're going to take the part of the URL that says ```REALLYLONGTOKEN``` and put it into the quotes. 
-It should look like this ```totp = pyotp.TOTP("REALLYLONGTOKEN")```
+## Disclaimer
 
-Finally rename ```config_template.py``` to ```config_file.py``` 
-
-# Lets start!
-Now that everything is setup. run ```pip install -r requirements.txt``` and it will install all the requirements needed!
-Give it a shot and run the code by running ```python top.py```. 
-
-# Did it error out? 
-If it fails. Try to add chromedriver to your OS path.
-For some reason, some users are having issues with SQLAlchemy, if the code is complaining about SQLAlchemy, ```pip install SQLAlchemy``` in your environment. Should work  
-
-# Why is it asking for my Google?
-
-You should see something along the lines of this. 
-![image](https://github.com/user-attachments/assets/25518b7d-d259-47cb-8b08-6347f48330f2)
-Its basically asking you which account you want to link to the script to push calendar events to 
-
-# IS THIS A WIRUS?
-If you have not verified your application (which is not required, theres no real reason to verify in our case), you will see a message like this. 
-![image](https://github.com/user-attachments/assets/b54666f8-5209-4c61-8d9a-92295da0fe80)
-
-All this is saying is that the application that you made has not been verified. Google this is more if you'd want to make something like this a public thing, like good integration in your app. You're more than welcome to verify it thru google but you're wasting your time. Hit show advanced and then hit ```Go to [whatever you named your Cloud Project] (unsafe)```. 
-
-All this code is open source, if you don't feel comfortable with hitting that button, you can go through this code line by line to ensure that it is safe. 
-
-And you're done!
-
-In theory your Google Calendar is getting filled with your target shifts!
-
-
-# Having issues?
-If you're having issues feel free to shoot me a message on discord ```versiondefect``` or just make a issue / open a new discussion post. 
-Happy planning!
+This code is open source and provided as-is. Please review the code if you have security concerns.
